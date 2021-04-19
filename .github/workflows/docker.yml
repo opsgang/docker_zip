@@ -9,7 +9,7 @@ on:
       - 'v*'
 
   schedule:
-    - cron: "19 4 * * *" # everyday at 04:19
+    - cron: "11 4 * * *" # everyday at 04:11
 
 jobs:
   docker-build:
@@ -83,27 +83,6 @@ jobs:
       - name: Available platforms
         run: echo ${{ steps.qemu.outputs.platforms }}
 
-      - name: Build for scans
-        uses: docker/build-push-action@v2
-        with:
-          build-args: |
-            VERSION=${{ steps.prep.outputs.version }}
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.prep.outputs.testtag }}
-
-      - name: Run the Anchore scan action itself with GitHub Advanced Security code scanning integration enabled
-        uses: anchore/scan-action@main
-        with:
-          image: ${{ steps.prep.outputs.testtag }}
-          acs-report-enable: true
-          fail-build: true
-          severity-cutoff: critical
-
       - name: Login to DockerHub
         uses: docker/login-action@v1
         with:
@@ -131,25 +110,6 @@ jobs:
             org.opencontainers.image.title=zip
             org.opencontainers.image.url=${{ github.event.repository.html_url }}
             org.opencontainers.image.version=${{ steps.prep.outputs.version }}
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: ${{ steps.prep.outputs.tags }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.prep.outputs.tag }}
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          format: 'template'
-          template: '@/contrib/sarif.tpl'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Move results into single directory
-        run: mkdir image_scan_results; mv results.sarif image_scan_results/ ; mv trivy-results.sarif image_scan_results/
-
-      - name: Upload Scan Reports
-        uses: github/codeql-action/upload-sarif@v1
-        with:
-          sarif_file: image_scan_results
