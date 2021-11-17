@@ -29,7 +29,7 @@ USER packager
 ENV LDFLAGS="--static"
 ENV MAKEFLAGS="-j4"
 
-RUN abuild-keygen -a -i
+RUN abuild-keygen -a -i -n
 
 RUN \
   mkdir zip && \
